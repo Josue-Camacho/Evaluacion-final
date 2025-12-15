@@ -98,16 +98,7 @@ app.UseAuthorization();
 await SetupDatabaseAsync(app);
 
 // Endpoints básicos
-app.MapGet("/", () => {
-    var env = app.Environment.EnvironmentName;
-    return new
-    {
-        message = "Taxi API is running!",
-        environment = env,
-        timestamp = DateTime.UtcNow,
-        status = "healthy"
-    };
-});
+app.MapGet("/", () => "OK");
 
 app.MapGet("/db-status", async (HttpContext httpContext) => {
     try
