@@ -192,9 +192,24 @@ app.MapGet("/db-status", async (HttpContext httpContext) => {
 
 app.MapControllers();
 
-Console.WriteLine("Application is starting, waiting 5 seconds for health checks...");
-await Task.Delay(5000); // Espera 5 segundos para que todo esté listo
+// Middleware para loggear todas las peticiones
+app.Use(async (context, next) =>
+{
+    var start = DateTime.UtcNow;
+    Console.WriteLine($"[{start:HH:mm:ss.fff}] ? {context.Request.Method} {context.Request.Path}");
 
+    await next();
+
+    var end = DateTime.UtcNow;
+    var duration = (end - start).TotalMilliseconds;
+    Console.WriteLine($"[{end:HH:mm:ss.fff}] ? {context.Response.StatusCode} ({duration:F0}ms)");
+});
+
+Console.WriteLine($"Health check available at: http://0.0.0.0:{port}/health");
+Console.WriteLine($"API ready at: http://0.0.0.0:{port}/api");
+Console.WriteLine($"Database status: http://0.0.0.0:{port}/db-status");
+
+Console.WriteLine("Application is starting...");
 
 app.Run();
 
