@@ -2,7 +2,6 @@
 using ProyectoFinalTecWeb.Entities.Dtos.DriverDto;
 using ProyectoFinalTecWeb.Entities.Dtos.PassengerDto;
 using ProyectoFinalTecWeb.Repositories;
-
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using ProyectoFinalTecWeb.Entities;
@@ -275,5 +274,71 @@ namespace ProyectoFinalTecWeb.Services
             var bytes = RandomNumberGenerator.GetBytes(64);
             return Base64UrlEncoder.Encode(bytes);
         }
+
+        public async Task<string?> ForgotPasswordAsync(string email)
+        {
+            var driver = await _drivers.GetByEmailAddress(email);
+            if (driver != null)
+            {
+                var token = GeneratePasswordResetToken();
+                driver.PasswordResetToken = token;
+                driver.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(15); 
+                await _drivers.Update(driver);
+                return token;
+            }
+
+            var passenger = await _passengers.GetByEmailAddress(email);
+            if (passenger != null)
+            {
+                var token = GeneratePasswordResetToken();
+                passenger.PasswordResetToken = token;
+                passenger.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+                await _passengers.Update(passenger);
+                return token;
+            }
+
+            return null; 
+        }
+
+        public async Task<bool> ResetPasswordAsync(string token, string email, string newPassword)
+        {
+            if (!int.TryParse(token, out int tokenMinutes))
+                return false;
+
+            var now = DateTime.UtcNow;
+            var currentMinutes = (int)(now - now.Date).TotalMinutes;
+
+            if (tokenMinutes > currentMinutes || (currentMinutes - tokenMinutes) > 15)
+                return false;
+
+            var driver = await _drivers.GetByEmailAddress(email);
+            if (driver != null)
+            {
+                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                driver.PasswordHash = hashedPassword;
+                await _drivers.Update(driver);
+                return true;
+            }
+
+            var passenger = await _passengers.GetByEmailAddress(email);
+            if (passenger != null)
+            {
+                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                passenger.PasswordHash = hashedPassword;
+                await _passengers.Update(passenger);
+                return true;
+            }
+
+            return false;
+        }
+        private string GeneratePasswordResetToken()
+        {
+            var now = DateTime.UtcNow;
+            var minutesSinceMidnight = (int)(now - now.Date).TotalMinutes;
+            return minutesSinceMidnight.ToString("D4"); 
+        }
+
     }
 }
+
+
